@@ -1,17 +1,22 @@
 package net.runelite.client.plugins.ezolm;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.NPC;
-import net.runelite.api.Query;
+import net.runelite.api.*;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.ProjectileMoved;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.demonicgorilla.DemonicGorilla;
 import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.QueryRunner;
 
 import javax.inject.Inject;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -24,44 +29,71 @@ public class EzOlmPlugin extends Plugin {
     private Client client;
 
     @Inject
-    private QueryRunner queryRunner;
+    private OverlayManager overlayManager;
 
     @Inject
     private EzOlmOverlay overlay;
 
     private OlmAttack attack;
 
+    @Getter
+    @Setter
+    private int recentProjectileId;
+
     public Overlay getOverlay()
     {
         return overlay;
     }
 
+    @Override
+    protected void startUp()
+    {
+        overlayManager.add(overlay);
+    }
+
+    @Override
+    protected void shutDown() throws Exception
+    {
+        overlayManager.remove(overlay);
+    }
     @Schedule(
             period = 600,
             unit = ChronoUnit.MILLIS
     )
-    public void update()
-    {
-        if (client.getGameState() != GameState.LOGGED_IN)
-        {
+
+    public void update() {
+        if (client.getGameState() != GameState.LOGGED_IN) {
             return;
         }
 
-        NPC jad = findOlm();
-        if (jad != null)
-        {
-            if (jad.getAnimation() == OlmAttack.MAGIC.getAnimation())
-            {
+        NPC olm = findOlm();
+
+        /*
+        if (olm != null) {
+            if (olm.getAnimation() == 1528) {
+                log.debug("MAIN ATTACK");
                 attack = OlmAttack.MAGIC;
-            }
-            else if (jad.getAnimation() == OlmAttack.RANGE.getAnimation())
-            {
+            } else if (olm.getAnimation() == 1529) { // OlmAttack.RANGE.getAnimation()
+                log.debug("HE CASTED IT");
                 attack = OlmAttack.RANGE;
+            } else {
+                attack = OlmAttack.NONE;
             }
-        }
-        else
-        {
+        } else {
             attack = null;
+        }
+        */
+
+        if (olm != null) {
+            if (recentProjectileId == ProjectileID.OLM_MAGIC) {
+                attack = OlmAttack.MAGIC;
+            } else if (recentProjectileId == ProjectileID.OLM_RANGED) {
+                attack = OlmAttack.RANGE;
+            } else {
+                attack = OlmAttack.NONE;
+            }
+        } else {
+            attack = OlmAttack.NONE;
         }
     }
 
@@ -70,14 +102,40 @@ public class EzOlmPlugin extends Plugin {
 
         NPC tempNPC = null;
         for (NPC npc : npcs) {
-            log.debug(npc.getName());
-            if (npc.getId() == 4148) {
+            if (npc.getId() == 7554) {
                 tempNPC = npc;
+                break;
             }
         }
 
         return tempNPC;
     }
+
+    @Subscribe
+    public void onProjectileMoved(ProjectileMoved event)
+    {
+        Projectile projectile = event.getProjectile();
+        int projectileId = projectile.getId();
+
+        if (projectileId != ProjectileID.OLM_MAGIC && projectileId != ProjectileID.OLM_RANGED) {
+            return;
+        }
+
+        // The event fires once before the projectile starts moving,
+        // and we only want to check each projectile once
+        if (client.getGameCycle() >= projectile.getStartMovementCycle()) {
+            return;
+        }
+
+        if (projectileId == ProjectileID.OLM_MAGIC) {
+            recentProjectileId = projectileId;
+            log.debug("MAGIC ATTACK FIRED");
+        } else if (projectileId == ProjectileID.OLM_RANGED) {
+            recentProjectileId = projectileId;
+            log.debug("RANGED ATTACK FIRED");
+        }
+    }
+
     /*
     private NPC findJad()
     {
@@ -87,7 +145,7 @@ public class EzOlmPlugin extends Plugin {
     }
     */
 
-    OlmAttack getAttack()
+    public OlmAttack getAttack()
     {
         return attack;
     }
