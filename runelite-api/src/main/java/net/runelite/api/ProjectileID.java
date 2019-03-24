@@ -84,4 +84,7 @@ public class ProjectileID
 	public static final int VORKATH_PRAYER_DISABLE = 1471;
 	public static final int VORKATH_VENOM = 1470;
 	public static final int VORKATH_ICE = 350;
+
+	public static final int OLM_MAGIC = 1339;
+	public static final int OLM_RANGED = 1340;
 }
