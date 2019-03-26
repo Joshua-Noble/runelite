@@ -1,11 +1,14 @@
 package net.runelite.client.plugins.ezolm;
 
+import com.google.inject.Provides;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.ConfigChanged;
 import net.runelite.api.events.ProjectileMoved;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -34,6 +37,9 @@ public class EzOlmPlugin extends Plugin {
     @Inject
     private EzOlmOverlay overlay;
 
+    @Inject
+    private EzOlmConfig config;
+
     private OlmAttack attack;
 
     @Getter
@@ -60,6 +66,12 @@ public class EzOlmPlugin extends Plugin {
             period = 600,
             unit = ChronoUnit.MILLIS
     )
+
+    @Provides
+    EzOlmConfig ezOlmConfig(ConfigManager configManager)
+    {
+        return configManager.getConfig(EzOlmConfig.class);
+    }
 
     public void update() {
         if (client.getGameState() != GameState.LOGGED_IN) {
